@@ -1,0 +1,278 @@
+---
+title: "Week 4 Lab: Exploring the National Health & Nutrition Examination Survey (NHANES)"
+subtitle: "PSY 150: Lab Exercise "
+author: "KEY"
+date: "`r Sys.Date()`"
+output: 
+    html_document:
+      theme: sketchy
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+------------------------------------------------------------------------
+
+### Outline
+
+* Read in data
+* Subset the data to make more manageable 
+* Create outcome variable to analyze
+* Split the data into 3 age groups 
+* Examine variable distributions using boxplots 
+* Create correlation tables for each age group
+* Compare correlations & significance across groups 
+
+------------------------------------------------------------------------
+
+### Load packages
+
+```{r}
+
+#### RUN CODE BLOCK (green triangle right hand corner of grey box) >>>>>
+
+library(psych)
+library(tidyverse)
+library(janitor)
+library(here)
+library(sjPlot)
+library(GGally)
+library(reshape2)
+
+```
+
+
+------------------------------------------------------------------------
+
+Data source: *National Health and Nutrition Examination Survey (NHANES)* 
+
+Link: https://www.cdc.gov/nchs/nhanes/index.html
+
+------------------------------------------------------------------------
+
+### Read in the `NHANES` data
+
+```{r}
+
+nhanes_all <- read_csv(here("data", "all_vars_nhanes_2017_2018.csv"))
+
+```
+
+### Create a subset of the data named `nhanes_clean`
+
+```{r}
+nhanes_clean <- nhanes_all %>%
+  select(1:9,            # Demographics
+         contains(c(                     
+         "phq9",         # Depression scale items
+         "emotion",      
+         "activity",
+         "recreation",
+         "walk",
+         "sleep",
+         "pain",
+         "outdoors"))) 
+
+```
+
+### Create another data.frame named `activity_data`
+
+```{r}
+activity_data <- nhanes_clean %>% 
+  select(1:9,                     
+         contains(c("phq9", "outdoors_","days", "sleep_hours"))) %>% 
+  mutate(across(contains("phq9"),
+    ~ case_when(
+      .x == "Not at all" ~ 0,
+      .x == "Several days" ~ 1,
+      .x == "More than half the days" ~ 2,
+      .x == "Nearly every day" ~ 3,
+      TRUE ~ NA_real_))) %>% 
+   mutate(depression_scale = rowMeans(across(contains("phq9")), na.rm = TRUE)) %>% 
+   mutate(across(outdoors_workday:mod_recreation_days,
+    ~ case_when(
+      .x %in% c(99, 3333, 7777, 9999) ~ NA_real_ ,
+      TRUE ~ as.numeric(.x)
+    ))) %>% 
+   drop_na(depression_scale)
+  
+```
+
+
+------------------------------------------------------------------------
+
+### Prepare final analysis data
+
+------------------------------------------------------------------------
+
+Split the sample by age range by making 3 data.frames
+```{r}
+
+make_corr_data <- function(min_age, max_age) {
+  activity_data %>% 
+    filter(age_years >= min_age & age_years <= max_age) %>% 
+    select(
+      depression_scale, sex_female,
+      contains(c("outdoors_", "walk_or_bike_days", "days", "sleep_hours"))) %>%
+    mutate(across(where(~ is.character(.x) | is.factor(.x)), ~ as.numeric(as.factor(.x)))) 
+}
+
+# create datasets
+cor_18_20 <- make_corr_data(18, 20)
+cor_18_24 <- make_corr_data(18, 24)
+cor_30_60 <- make_corr_data(30, 60)
+
+```
+
+
+------------------------------------------------------------------------
+
+### Quartiles & Boxplots
+
+------------------------------------------------------------------------
+
+![](figures/boxplot_diagram.jpg)
+
+### What is a quartile?
+
+- Takes a variables distribution and cuts it into 4 equal parts
+- 1st quartile (Q1) = The value below which 25% of the data fall
+- 2nd quartile (Q2) = The value below which 50% of the data fall (the median)
+- 3rd quartile (Q3) = The value below which 75% of the data fall.
+- Interquartile Range (IQR = Q3 – Q1) = The middle 2 quartiles (50% of dist.)
+
+### What is a boxplot?
+
+- Dark line (inside the box) = median (50th percentile)
+- Box-length (IQR) = middle 50% of data (Q3 -Q1)
+- Left side of the box (Q1) = 25th percentile 
+- Right side of the box (Q3) = 75th percentile
+- Whiskers = 1.5 × IQR
+- Points beyond whiskers = Outliers
+
+------------------------------------------------------------------------
+
+### Take a quick look at the variables 
+
+Check multiple distributions at once 
+
+------------------------------------------------------------------------
+
+```{r}
+
+cor_18_20 |> 
+  select(-sex_female, -sleep_hours_weekday, -mod_recreation_days) |> 
+  melt() |> 
+  ggplot(aes(x=value, label=variable, fill=variable)) +   
+  #geom_histogram() + # UNCOMMNET to plot histograms (& COMMENT line below)
+  geom_boxplot() + 
+  facet_wrap(~variable, scales = "free") +
+  guides(fill = "none")
+
+```
+
+------------------------------------------------------------------------
+
+### Correlation Strength (rules of thumb)
+
+- Small (weak): r ≈ .10
+- Medium (moderate): r ≈ .30
+- Large (strong): r ≈ .50
+
+**Reference:** Cohen, J. (1988). *Statistical power analysis for the behavioral sciences.*
+
+------------------------------------------------------------------------
+
+### Create correlation tables
+
+------------------------------------------------------------------------
+
+Correlations for survey respondents ages 18 - 20
+```{r}
+
+cor_18_20 %>% 
+tab_corr(
+  corr.method = "pearson",
+  na.deletion = "pairwise",
+  triangle    = "lower",
+  digits      = 2,
+  show.p      = TRUE,
+  p.numeric   = TRUE,  # (p-value) printed under correlation coeff.
+  title = "Age range: 18 - 20 (N = 310)"
+)
+
+```
+
+**Question 1:** Interpret the correlation between `depression_scale` & `sex_female` (direction, strength, significance)
+
+**Response:** __________________________________________
+
+
+**Question 2:** Why is the correlation for `depression_scale` & `outdoors_nonwork` marked as not significant?
+
+**Response:** __________________________________________
+
+Correlations for survey respondents ages 18 - 24
+```{r}
+
+cor_18_24 %>% 
+tab_corr(
+  corr.method = "pearson",
+  na.deletion = "pairwise",
+  triangle    = "lower",
+  digits      = 2,
+  show.p      = TRUE,
+  p.numeric   = TRUE,
+  title = "Age range: 18 - 24 (N = 597)"
+)
+
+```
+
+**Question 3:** What are two reasons which can explain why the correlations are now significant in this new sample (column 1)?
+
+**Response:** __________________________________________
+
+Correlations for survey respondents ages 30 - 60
+```{r}
+
+cor_30_60 %>% 
+tab_corr(
+  corr.method = "pearson",
+  na.deletion = "pairwise",
+  triangle    = "lower",
+  digits      = 2,
+  show.p      = TRUE,
+  p.numeric   = TRUE,
+  title = "Age range: 30 - 60 (N = 2423)" 
+)
+
+```
+
+**Question 4:** Compare significant correlations (column 1) with the previous table: What changed across the two samples?
+
+**Response:** __________________________________________
+
+------------------------------------------------------------------------
+
+### A quick way to visualize multiple variables using `ggpairs()`
+
+------------------------------------------------------------------------
+
+```{r}
+
+activity_data %>% 
+  filter(age_years >= 30 & age_years <= 60) %>% 
+  select(depression_scale, sex_female, outdoors_workday,
+         outdoors_nonwork, sleep_hours_weekend) %>% 
+  ggpairs(
+    aes(alpha = 0.1),
+    lower = list(continuous = "smooth"))
+
+```
+
+**Question:** Do you think the NHANES survey data has any selection bias?
+
+**Response:** __________________________________________
+
+
