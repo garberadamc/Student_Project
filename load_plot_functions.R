@@ -4,6 +4,7 @@
 library(tidyverse)
 library(ggrepel)
 library(here)
+library(patchwork)
 
 ### Create plot theme `theme_classic_grid`
 
@@ -152,6 +153,7 @@ scatter_plot <- function(
     jitter_width = 0.4,
     jitter_height = 0.4,
     corr_line = TRUE,
+    corr_label = TRUE,
     title = NULL,
     x_label = NULL,
     y_label = NULL
@@ -161,19 +163,19 @@ scatter_plot <- function(
   y <- dplyr::pull(data, {{ y_var }})
   ok <- is.finite(x) & is.finite(y)
   x <- x[ok]; y <- y[ok]
-  df <- tibble(x = x, y = y)
+  df <- tibble::tibble(x = x, y = y)
   
   # correlation
-  r_val <- suppressWarnings(cor(x, y, use = "complete.obs"))
+  r_val <- suppressWarnings(stats::cor(x, y, use = "complete.obs"))
   r_lab <- paste0("Correlation = ", sprintf("%.2f", r_val))
   
   # label position (top-right corner at 0.9*max)
-  x_rng <- range(x); y_rng <- range(y)
+  x_rng <- range(x, na.rm = TRUE); y_rng <- range(y, na.rm = TRUE)
   x0 <- x_rng[1] + 0.9 * diff(x_rng)
   y0 <- y_rng[1] + 0.9 * diff(y_rng)
   
-  p <- ggplot(df, aes(x = x, y = y)) +
-    geom_jitter(
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y)) +
+    ggplot2::geom_jitter(
       color = point_color,
       size = size,
       alpha = alpha,
@@ -181,30 +183,35 @@ scatter_plot <- function(
       height = jitter_height
     )
   
-  if (isTRUE(corr_line)) {
-    p <- p + geom_smooth(method = "lm", se = FALSE, color = "darkblue")
+  # Add correlation line only if we have enough variability
+  if (isTRUE(corr_line) && length(x) >= 2 && length(y) >= 2 &&
+      stats::var(x, na.rm = TRUE) > 0 && stats::var(y, na.rm = TRUE) > 0) {
+    p <- p + ggplot2::geom_smooth(method = "lm", se = FALSE, color = "darkblue")
   }
   
-  p +
-    geom_label(
-      data = tibble(x = x0, y = y0, lab = r_lab),
-      aes(x = x, y = y, label = lab),
-      inherit.aes = FALSE,
+  # Add correlation label via annotate (no aes/data headaches)
+  if (isTRUE(corr_label) && is.finite(x0) && is.finite(y0)) {
+    p <- p + ggplot2::annotate(
+      "label",
+      x = x0, y = y0, label = r_lab,
       color = "darkblue",
       fill = "white",
       size = 5,
       label.size = 0.25
-    ) +
-    labs(
+    )
+  }
+  
+  p +
+    ggplot2::labs(
       title = title,
       x = x_label,
       y = y_label
     ) +
-    theme_classic() +
-    theme(
-      panel.grid.major.y = element_line(colour = "grey92"),
-      panel.grid.major.x = element_line(colour = "grey95"),
-      panel.grid.minor = element_blank()
+    ggplot2::theme_classic() +
+    ggplot2::theme(
+      panel.grid.major.y = ggplot2::element_line(colour = "grey92"),
+      panel.grid.major.x = ggplot2::element_line(colour = "grey95"),
+      panel.grid.minor = ggplot2::element_blank()
     )
 }
 
@@ -264,76 +271,9 @@ ggplot(t_grid, aes(x, d)) +
     theme_classic(base_size = 13)
 }
 
-### Plot grouped distributions (3 ways)
+###############################################
 
-library(ggridges)
-library(patchwork)
-library(forcats)
-library(tools)
 
-theme_fancy <- function() {
-  theme_minimal() +
-    theme(panel.grid.minor = element_blank())
-}
-
-plot_group_dist <- function(data, outcome, group_var, title,
-                            subtitle = "Sample of 400 movies from IMDB",
-                            colors = c("#0288b7", "#a90010")) {
-  
-  # keep labels as in original (title-case "rating" -> "Rating")
-  x_lab <- toTitleCase(outcome)
-  
-  # make a helper factor column for consistent labels/facets
-  d <- data %>% mutate(.grp = factor(.data[[group_var]]))
-  
-  # BOX PLOT
-  p_box <- ggplot(d, aes(x = .grp, y = .data[[outcome]], fill = .grp)) +
-    geom_boxplot() +
-    scale_fill_manual(values = colors, guide = FALSE) +
-    scale_y_continuous(breaks = seq(1, 10, 1)) +
-    labs(x = NULL, y = x_lab) +
-    theme_fancy()
-  
-  # HISTOGRAM (faceted by group)
-  p_hist <- ggplot(d, aes(x = .data[[outcome]], fill = .grp)) +
-    geom_histogram(binwidth = 1, color = "white") +
-    scale_fill_manual(values = colors, guide = FALSE) +
-    scale_x_continuous(breaks = seq(1, 10, 1)) +
-    labs(y = "Count", x = x_lab) +
-    facet_wrap(~ .grp, nrow = 2) +
-    theme_fancy() +
-    theme(panel.grid.major.x = element_blank())
-  
-  # RIDGES (median line; group labels from factor, reversed as original)
-  p_ridges <- ggplot(d, aes(x = .data[[outcome]], y = fct_rev(.grp), fill = .grp)) +
-    stat_density_ridges(quantile_lines = TRUE, quantiles = 2, scale = 3, color = "white") +
-    scale_fill_manual(values = colors, guide = FALSE) +
-    scale_x_continuous(breaks = seq(0, 10, 2)) +
-    labs(x = x_lab, y = NULL, subtitle = "White line shows median rating") +
-    theme_fancy()
-  
-  # assemble like original
-  (p_box | p_hist) / p_ridges +
-    plot_annotation(
-      title = title,
-      subtitle = subtitle,
-      theme = theme(
-        #text = element_text(family = "Asap Condensed"),
-        #plot.title = element_text(face = "bold", size = rel(1))
-      )
-    )
-}
-
-#############################
-
-# plot_group_dist(
-#   data = ac_movies,
-#   x = "rating",
-#   y = "action_comedy",
-#   title = "Do comedies get higher ratings than action movies?",
-#   subtitle = "Sample of 400 movies from IMDB")
-
-#############################
 
 mean_diff_barplot <- function(data, group_var, title, outcome = "rating",
                               colors = c("#0288b7", "#a90010")) {
@@ -373,9 +313,132 @@ mean_diff_barplot <- function(data, group_var, title, outcome = "rating",
     )
 }
 
-# mean_diff_barplot(
-#   data = ac_movies,
-#   outcome = "rating",
-#   group_var = "action_comedy",
-#   title = "Average Movie Rating",
-#   colors = c("#0288b7", "#a90010"))
+###############################################
+
+plot_reg <- function(
+    data, x_var, y_var,
+    point_color = "steelblue", size = 3, alpha = 0.7,
+    reg_line = TRUE, eq_label = TRUE, digits = 1,
+    # NEW: axis controls
+    x_min = NULL, x_max = NULL, x_by = NULL,
+    y_min = 0,    y_max = NULL, y_by = NULL,
+    title = NULL, x_label = NULL, y_label = NULL
+) {
+  x_name <- rlang::as_name(rlang::ensym(x_var))
+  y_name <- rlang::as_name(rlang::ensym(y_var))
+  
+  x <- dplyr::pull(data, {{ x_var }})
+  y <- dplyr::pull(data, {{ y_var }})
+  ok <- is.finite(x) & is.finite(y)
+  x <- x[ok]; y <- y[ok]
+  df <- tibble::tibble(x = x, y = y)
+  
+  fit <- stats::lm(y ~ x)
+  b0 <- unname(coef(fit)[1]); b1 <- unname(coef(fit)[2])
+  
+  digits <- max(0, as.integer(digits))
+  fmt_plain  <- paste0("%.", digits, "f")
+  fmt_signed <- paste0("%+.", digits, "f")
+  slope_str  <- gsub("([+-])", "\\1 ", sprintf(fmt_signed, b1))
+  eq_lab <- paste0(y_name, " = ", sprintf(fmt_plain, b0), " ", slope_str, "*", x_name)
+  
+  x_rng <- range(x, na.rm = TRUE); y_rng <- range(y, na.rm = TRUE)
+  x0 <- x_rng[1] + 0.75 * diff(x_rng)
+  y0 <- y_rng[1] + 0.95 * diff(y_rng)
+  
+  if (is.null(x_label)) x_label <- x_name
+  if (is.null(y_label)) y_label <- y_name
+  
+  # ---------- breaks & limits ----------
+  # X breaks: use user-specified min/max/by if provided, else dynamic every 2
+  if (!is.null(x_by)) {
+    x_from   <- if (is.null(x_min)) floor(min(x, na.rm = TRUE)) else x_min
+    x_to     <- if (is.null(x_max)) ceiling(max(x, na.rm = TRUE)) else x_max
+    x_breaks <- seq(x_from, x_to, by = x_by)
+  } else {
+    x_max_break <- ceiling(max(x, na.rm = TRUE) / 2) * 2
+    x_breaks <- seq(0, max(10, x_max_break), by = 2)
+  }
+  
+  # Y breaks: use user-specified min/max/by if provided, else default pretty
+  if (!is.null(y_by)) {
+    y_from   <- if (is.null(y_min)) floor(min(y, na.rm = TRUE)) else y_min
+    y_to     <- if (is.null(y_max)) ceiling(max(y, na.rm = TRUE)) else y_max
+    y_breaks <- seq(y_from, y_to, by = y_by)
+  } else {
+    y_breaks <- waiver()
+  }
+  
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y)) +
+    ggplot2::geom_point(color = point_color, size = size, alpha = alpha)
+  
+  # regression line (extends to axes)
+  if (isTRUE(reg_line) && stats::var(x) > 0 && stats::var(y) > 0) {
+    p <- p + ggplot2::geom_abline(intercept = b0, slope = b1, color = "darkblue")
+  }
+  
+  # --- after computing x_min/x_max/y_min/y_max ---
+  
+  # Use axis limits (fall back to data range if any are NULL)
+  x_lo <- if (is.null(x_min)) min(x, na.rm = TRUE) else x_min
+  x_hi <- if (is.null(x_max)) max(x, na.rm = TRUE) else x_max
+  y_lo <- if (is.null(y_min)) min(y, na.rm = TRUE) else y_min
+  y_hi <- if (is.null(y_max)) max(y, na.rm = TRUE) else y_max
+  
+  # place label safely inside the panel (80% across, 92% up)
+  x0 <- x_lo + 0.80 * (x_hi - x_lo)
+  y0 <- y_lo + 0.92 * (y_hi - y_lo)
+  
+  # equation label
+  if (isTRUE(eq_label) && is.finite(x0) && is.finite(y0)) {
+    p <- p + ggplot2::annotate(
+      "label", x = x0, y = y0, label = eq_lab,
+      color = "darkblue", fill = "white", size = 5, label.size = 0.25, hjust = 1
+    )
+  }
+  
+  p +
+    ggplot2::labs(title = title, x = x_label, y = y_label) +
+    ggplot2::scale_x_continuous(
+      limits = c(x_min, x_max),          # respect user min/max if set
+      breaks = x_breaks,
+      expand = ggplot2::expansion(mult = c(0, 0.02))
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(y_min, y_max),          # default y_min = 0 to avoid negatives
+      breaks = y_breaks,
+      expand = ggplot2::expansion(mult = c(0, 0.03))
+    ) +
+    ggplot2::theme_classic() +
+    ggplot2::theme(
+      panel.grid.major.y = ggplot2::element_line(colour = "grey92"),
+      panel.grid.major.x = ggplot2::element_line(colour = "grey95"),
+      panel.grid.minor = ggplot2::element_blank()
+    )
+  
+}
+
+#######################################################################
+
+bar_plot <- function(data, x_var, 
+                     x_label = NULL, 
+                     y_label = "Count", 
+                     title = NULL) {
+  
+  x_var <- enquo(x_var)  # capture input variable
+  
+  data %>%
+    count(!!x_var) %>%
+    mutate(percent = 100 * n / sum(n)) %>%
+    ggplot(aes(x = !!x_var, y = n, fill = !!x_var)) +
+    geom_col(width = 0.7, color = "white") +
+    geom_text(aes(label = paste0(round(percent, 1), "%")),
+              vjust = -0.5, size = 4) +
+    labs(
+      x = x_label,
+      y = y_label,
+      title = title
+    ) +
+    theme_classic() +
+    theme(legend.position = "none")
+}

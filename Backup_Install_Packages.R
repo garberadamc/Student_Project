@@ -1,0 +1,36 @@
+
+# Backup install packages 
+
+install.packages("tidyverse")
+install.packages("here")
+install.packages("janitor")
+install.packages("report")
+install.packages("gt")
+install.packages("psych")
+install.packages("sjPlot")
+install.packages("corrplot")
+install.packages("tidyverse")
+install.packages("ggrepel")
+install.packages("patchwork")
+install.packages("GGally")
+install.packages("performance")
+install.packages("jtools")
+install.packages("interactions")
+
+# Load packages 
+
+library(tidyverse)
+library(here)
+library(janitor)
+library(report)
+library(gt)
+library(psych)
+library(sjPlot)
+library(corrplot)
+library(tidyverse)
+library(ggrepel)
+library(patchwork)
+library(GGally)
+library(performance)
+library(jtools)
+library(interactions)

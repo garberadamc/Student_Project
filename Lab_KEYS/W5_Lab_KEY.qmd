@@ -1,0 +1,369 @@
+---
+title: "Week 6 LAB: Regression"
+subtitle: "PSY 150 - Lab Exercise"
+author: "KEY"
+date: "`r Sys.Date()`"
+output: 
+    html_document
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, eval=FALSE)
+options(scipen = 999) 
+```
+
+------------------------------------------------------------------------
+
+### Outline
+
+* Read in the Cali Schools sample data
+* Look at the data & key variables (outcome & predictor)
+* Practice estimating a regression model
+* Explore model predictions
+* Look at a 2nd data example - Income & Education
+* Run regressions & explore predictions
+* Practice reading in some data simulated for student projects
+
+------------------------------------------------------------------------
+
+### Load packages & plot functions
+
+------------------------------------------------------------------------
+
+```{r}
+
+library(tidyverse)
+library(janitor)
+library(report)
+library(GGally)
+library(performance)
+library(jtools)
+
+source("load_plot_functions.R")
+
+```
+
+------------------------------------------------------------------------
+
+**Acknowledgement:** 
+
+The code for this lab exercise was adapted from and inspired by materials authored by Eric Van Holm's bookdown titled, *Introduction to Research Methods*.
+
+> [Bookdown-Eric-Van-Holm](https://bookdown.org/ejvanholm/Textbook/multiple-regression.html#concepts-6)
+
+------------------------------------------------------------------------
+
+**Data source:**
+
+> [California Test Score Data](https://www.rdocumentation.org/packages/AER/versions/1.2-15/topics/CASchools)
+
+------------------------------------------------------------------------
+
+### Read-in lab exercise data
+
+```{r}
+
+ca_schools <- read_csv("https://raw.githubusercontent.com/ejvanholm/DataProjects/master/CASchools.csv") 
+
+glimpse(ca_schools)
+
+```
+
+
+Check Distribution of Outcome Variable (Y): `Average Math Test Scores` in California Schools (N=420)
+```{r}
+
+hist_plot(
+  data = ca_schools,
+  x_var = math,
+  x_label = "Math Test Score (School-Average)",
+  binwidth=5,
+  fill = "red",
+  color = "black",
+  #break_min = 0, break_max = 35, break_by = 10,
+  mean_line = TRUE, median_line = TRUE,
+  skew_value = TRUE, kurtosis_value = TRUE,
+  title = "Distribution of Math Test Scores in California Schools (N=420) ",
+  )  
+
+```
+
+Check Distribution of Predictor Variable (X): Number of Computers in California Schools (N=420)
+```{r}
+
+hist_plot(
+  data = ca_schools,
+  x_var = computer,
+  x_label = "Number of Computers",
+  binwidth=100,
+  fill = "yellow",
+  color = "black",
+  #break_min = 0, break_max = 35, break_by = 10,
+  mean_line = TRUE, median_line = TRUE,
+  skew_value = TRUE, kurtosis_value = TRUE,
+  title = "Distribution of Number of Computers in California Schools (N=420)") 
+
+```
+
+Take a look at the correlation between `Computers` (X) & `Math Scores` (Y)
+```{r}
+
+scatter_plot(
+  data = ca_schools,
+  x_var = computer,
+  x_label = "Number of Computers",
+  y_var = math,
+  y_label = "Math Score (School Average)",
+  point_color = "lightblue",
+  corr_line = FALSE,
+  title   = "Math Scores are lower in sample for schools with more computers")
+
+```
+
+Run regression model: `Math` (Y) regressed on `Computer` (X)
+```{r}
+
+reg_model <- lm(formula = math ~ computer,
+   data = ca_schools)
+
+
+summ(reg_model, digits = 3, model.fit = FALSE)
+
+```
+
+Plot the linear regression model (line) & the data (points): `Math` (Y) regressed on `Computer` (X)
+```{r}
+  
+plot_reg(
+  data = ca_schools,
+  x_var = computer,
+  x_label = "Number of Computers",
+  y_var = math,
+  y_label = "Math Scores",
+  point_color = "lightblue",
+  reg_line = TRUE, eq_label = TRUE, digits = 3,
+  x_min = 0, x_max = 3324, x_by = 500,
+  y_min = 605, y_max = 710, y_by = 100,
+  title   = ""
+)
+```
+
+
+Check what the model predicts for schools with different numbers of computers (choose 2 numbers)
+```{r}
+tibble(computer = c(100, 1000)) |> 
+  mutate(predicted_math = predict(reg_model, newdata = cur_data())) |> 
+  mutate(percent_diff = 100 * (predicted_math / first(predicted_math) - 1))
+```
+
+**Question:** The negative association was unexpected, what can we do to investigate this relationship further?
+
+**Response:** __________________________________________
+
+
+------------------------------------------------------------------------
+
+### How can we explain this? I am counfounded! 
+
+We should consider potential *confounding* variables:
+
+An *omitted* variable which may explain the relationship between `Math` → `Computers`
+
+------------------------------------------------------------------------
+
+Let's look at how the number of students varies across California schools in this sample
+```{r}
+
+hist_plot(
+  data = ca_schools,
+  x_var = students,
+  x_label = "Number of Students",
+  binwidth=150,
+  fill = "orange",
+  color = "black",
+  #break_min = 0, break_max = 35, break_by = 10,
+  mean_line = TRUE, median_line = TRUE,
+  skew_value = TRUE, kurtosis_value = TRUE,
+  title = "Distribution of Number of Students in California Schools (N=420)") 
+
+```
+
+How are the variables (math, computer, and students) related? 
+
+Let's get a quick snapshot using `ggpairs()`
+```{r}
+
+ca_schools |> 
+  select(math, computer, students) |> 
+  ggpairs(
+    aes(alpha = 0.05),
+    lower = list(continuous = "smooth"))
+
+```
+
+**Question:** What happens if we add a 2nd predictor to the regression model? If the relationship of predictor with the outcome is strong, it can effect the strength/direction of other predictors (Why?):
+
+**Response:** __________________________________________
+
+
+
+Let's run a multiple regression model by adding `students` as a 2nd predictor
+```{r}
+
+reg_model2 <- lm(formula = 
+                  math ~ computer + students, # ADD CONTROL
+   data = ca_schools)
+
+summ(reg_model2, digits = 3, model.fit = FALSE)
+
+```
+
+### What does the model predict?
+
+NOTE: The average number of students in the Cali Schools sample is 2629 students
+```{r}
+
+tibble(computer = c(1000, 1000),
+       students = c(2629, 5000)) |>
+  mutate(predicted_math = predict(reg_model2, newdata = cur_data())) |>
+  mutate(percent_diff = 100 * (predicted_math / first(predicted_math) - 1))
+```
+
+------------------------------------------------------------------------
+
+### Explaining variance in Math Scores & Shared Variance
+
+![](Venn_Shared_Variance.png)
+
+------------------------------------------------------------------------
+
+**Question:** Explore a couple of different predictions by varying values for `computer` & `student` - Explain what you found:
+
+**Response:** __________________________________________
+
+------------------------------------------------------------------------
+
+Now take a look at the prediction line for `computers` (while fixing `students` at the average)
+
+NOTE: By default `effect_plot()` fixes the other predictor (`students`) included in the model at its average (mean)
+
+```{r}
+
+effect_plot(reg_model2, pred = computer, interval = FALSE, plot.points = TRUE, 
+            jitter = 0.05, main.title = "Effect of Computers on Math Scores  -  *Controlling for Students*")
+```
+
+
+------------------------------------------------------------------------
+
+### Is income related to years of education? 
+
+**Data source:**
+
+*Panel Study on Income Dynamics* (https://www.rdocumentation.org/packages/AER/versions/1.2-9/topics/PSID1982)
+
+------------------------------------------------------------------------
+
+```{r}
+set.seed(54321)
+
+income_data <- read_csv("https://raw.githubusercontent.com/ejvanholm/DataProjects/master/PSID1982.csv") %>% 
+  sample_n(500)
+
+```
+
+Let's take a look at the distribution of our outcome variable `wage` 
+```{r}
+
+hist_plot(
+  data = income_data,
+  x_var = wage,
+  x_label = "Income",
+  binwidth=100,
+  fill = "green3",
+  color = "black",
+  #break_min = 0, break_max = 35, break_by = 10,
+  mean_line = TRUE, median_line = TRUE,
+  skew_value = TRUE, kurtosis_value = TRUE,
+  title = "Distribution of Income in Adult Sample (N=500)") 
+
+```
+
+Estimate the regression model using `lm()`
+```{r}
+
+model_wage <- lm(wage ~ education, income_data)
+
+summ(model_wage, digits = 3, model.fit = FALSE)
+
+```
+
+
+```{r}
+
+plot_reg(
+  data = income_data,
+  x_var = education,
+  x_label = "Years of Education",
+  y_var = wage,
+  y_label = "Income (Wage)",
+  point_color = "green3",
+  reg_line = TRUE,
+  eq_label = TRUE, digits = 0,
+  x_min = 3, x_max = 18, x_by = 1,
+  y_min = 290, y_max = 5100, y_by = 500,
+  title   = "Does Years of Education Predict Income?")
+
+
+```
+
+
+### What does the model predict?
+
+Pick values for `education` and see what the model predicts:
+```{r}
+tibble(education = c(12, 16)) |> 
+  mutate(predicted_wage = predict(model_wage, newdata = cur_data())) |> 
+  mutate(percent_diff = 100 * (predicted_wage / first(predicted_wage) - 1))
+```
+
+**Question:** Explore a couple of different predictions by varying values for `education` - Explain what you found:
+
+**Response:** __________________________________________
+
+------------------------------------------------------------------------
+
+### Read in some data simulated for student projects
+
+Using *Google Scholar* to search for research:
+
+https://scholar.google.com/
+
+------------------------------------------------------------------------
+
+```{r}
+
+# Take a look at article (Cimprich, 2003) & codebook in "data" folder
+
+nature_data <- read_csv(here("data", "nature_simdata_Cimprich2003.csv"))
+
+glimpse(nature_data)
+
+```
+
+```{r}
+
+# Take a look at article (Reuter, 2021) & codebook in "data" folder
+nutrition_data <- read_csv(here("data", "nutrition_academics_sim_N577.csv"))
+
+glimpse(nutrition_data)
+```
+
+```{r}
+
+# Take a look at article (Jniene, 2019) & codebook in "data" folder
+sleep_data <- read_csv(here("data", "blue_light_sleep_sim_psqi.csv"))
+
+glimpse(sleep_data)
+```
+

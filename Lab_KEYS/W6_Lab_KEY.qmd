@@ -1,0 +1,245 @@
+---
+title: "Week 7 - Lab Key"
+subtitle: "PSY 150: Interpreting Regressions with Continuous & Categorical Predictors"
+author: "KEY"
+date: "`r Sys.Date()`"
+output: 
+    html_document
+---
+
+```{r setup, warning=FALSE, message=FALSE, echo=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, eval=FALSE)
+options(scipen = 999) 
+```
+
+------------------------------------------------------------------------
+
+### Load packages (libraries)
+
+Packages include the *functions* we need for this lab:
+
+e.g., `read_csv()`, `here()`, `mutate()`, `tabyl()`, `effect_plot()` ...
+
+------------------------------------------------------------------------
+
+```{r}
+library(tidyverse)
+library(here)
+library(jtools)
+library(janitor)
+library(interactions)
+```
+
+------------------------------------------------------------------------
+
+### Simulated lab data - Music Listening Example: 
+
+**Disclaimer:** The data used in this lab has been simulated to parallel the analyses & results for the study titled, *"Music Listening and Stress in Daily Life — A Matter of Timing"* by Linnemann et al. (2018):
+
+[Article - Linnemann et al. (2018)](https://drive.google.com/file/d/1pr2TbZsodfWUDfN4HhTAzZ8wbLH0XHhC/view?usp=sharing)
+
+Although the data is simulated to be realistic, results should not be interpreted literally as simulated data necessarily includes assumptions that omit complexity found in real data that is reported by a sample of participants.
+
+------------------------------------------------------------------------
+
+### Categorical variables: In R we call them `factors`
+
+------------------------------------------------------------------------
+
+1. Read in the music data 
+2. Change variable type to `factor` (multiple variables/columns)
+3. Choose the order of factor levels 
+4. Label factor levels 
+
+```{r}
+                       
+dat <- read_csv(here("data", "music_stress_daily_sim_N60.csv")) %>%
+  mutate(across(
+    c(gender, site, music_listened_self, music_listened_obj, duration_cat, relaxation_goal),
+    as.factor)) %>% 
+  mutate(
+    music_type = factor(music_type, levels = c("classical","ambient","jazz","pop","rock","hiphop")),
+    with_others = factor(with_others, levels = c(0,1), labels = c("alone","with_others")),
+    weekend = factor(weekend, levels = c(0,1), labels = c("weekday","weekend"))
+  )
+
+str(dat)
+```
+
+------------------------------------------------------------------------
+
+### Look at the factor levels using `tabyl()`
+
+Does the participant listen to music `alone` or `with others`?
+```{r}
+tabyl(dat$with_others)
+```
+**Question:** What is the reference level of the factor `with_others`?
+
+**Response:** _______________________________________
+
+What type of music (genre) did participants listen to?
+```{r}
+tabyl(dat$music_type)
+```
+**Question:** What is the reference level of the factor `music_type`?
+
+**Response:** _______________________________________
+
+------------------------------------------------------------------------
+
+### Regression Model-1: One continuous predictor
+
+![](figures/model1_eq.png)
+
+------------------------------------------------------------------------
+
+Estimate Model-1 using `lm()` and display model results using `summ()`
+```{r}
+m1 <- lm(calmness_rating ~ duration_min,
+        data = dat)
+
+summ(m1, model.fit = FALSE, model.info = FALSE, digits = 3)
+```
+
+
+------------------------------------------------------------------------
+
+### How to describe the regression model output in a written report 
+
+------------------------------------------------------------------------
+
+Selected text from `report(m)`:
+
+- We fitted a linear model (estimated using OLS) to predict `calmness_rating` (outcome) with `duration_min` (predictor)
+- The intercept corresponding to `duration_min` = 0, is at 2.10
+- The effect of `duration_min` is statistically non-significant and positive (beta = .001, p = 0.630)
+
+------------------------------------------------------------------------
+
+### Visually plot the effect of the predictor (`duration_min`) on the outcome (`calmness_rating`)
+
+------------------------------------------------------------------------
+
+Take a look at the predictors effect (x-axis) on the outcome variable (y-axis)
+```{r}
+
+effect_plot(m1, pred = duration_min, interval = FALSE, plot.points = TRUE, 
+            line.color = "cyan3", colors = "gold", jitter = 0.05)
+
+```
+
+------------------------------------------------------------------------
+
+### Regression Model-2: Two continuous predictors
+
+![](figures/model2_eq.png)
+
+------------------------------------------------------------------------
+
+Estimate Model-2 using `lm()` and display model results using `summ()`
+```{r}
+
+m2 <- lm(calmness_rating ~ duration_min + workload_today,
+        data = dat)
+
+summ(m2, model.fit = FALSE, model.info = FALSE, digits = 3)
+
+```
+Plot the effect of predictor `workload_today` while holding `duration_min` fixed at mean
+```{r}
+
+effect_plot(m2, pred = workload_today, interval = FALSE, plot.points = TRUE, 
+            line.color = "blue", colors = "orange", jitter = 0.05) +
+  labs(x = "Workload (Hours)", y = "Calmness Rating",
+    caption = "Note: The predictor 'duration_min' is fixed at its mean value.") +
+  theme(plot.caption = element_text(hjust =.1, size =12, color = "gray20",  ))
+
+```
+
+What happens when we plot the effect of `workload_today` but vary `duration_min`?
+```{r}
+interact_plot(m2, pred = workload_today, modx = duration_min, plot.points = TRUE,
+              modx.values = c(16,120), colors = c("seagreen","orange"))
+```
+
+------------------------------------------------------------------------
+
+### Regression Model-3: A categorical predictor with two levels
+
+------------------------------------------------------------------------
+
+The predictor `with_others` is a factor with levels (`alone`, `with_others`)
+
+**Question:** What is the reference level?
+```{r}
+
+m3 <- lm(calmness_rating ~ with_others,
+        data = dat)
+
+# m3 <- lm(calmness_rating ~ fct_rev(with_others),
+#         data = dat)
+
+summ(m3, model.fit = FALSE, model.info = FALSE, digits = 3)
+
+```
+------------------------------------------------------------------------
+
+### How do we plot the effect of a categorical predictor?
+
+------------------------------------------------------------------------
+
+Note: `X` can only be 0 (`alone`) or 1 (`with_others`)
+```{r}
+
+effect_plot(m3, pred = with_others, interval = FALSE, plot.points = TRUE,
+            line.color = NA, colors = "seagreen", jitter = 0.05, point.alpha = .5) + 
+  geom_bar(data = dat,
+    aes(x = with_others, y = calmness_rating),
+    stat = "summary",
+    color = "seagreen", fill = "lightgrey",
+    alpha = 0.4
+  )
+
+```
+
+**Question:** How do we get the `calmness_rating` prediction for people who listen to music `alone` and `with others` from the regression equation?
+
+**Response:** _____________________________________
+
+------------------------------------------------------------------------
+
+### Regression Model-4: A categorical predictor with greater than two levels
+
+------------------------------------------------------------------------
+
+The predictor `music_type` is a factor with levels (`classical`, `ambient`, `jazz`, `pop`, `rock`, `hiphop`)
+
+**Question:** What is the reference level?
+```{r}
+
+m4 <- lm(calmness_rating ~ music_type,
+        data = dat)
+
+summ(m4, model.fit = FALSE, model.info = FALSE, digits = 3)
+
+```
+
+How do we plot the effect of a categorical predictor with greater than two levels?
+```{r}
+
+effect_plot(m4, pred = music_type, interval = FALSE, plot.points = TRUE,
+            line.color = NA, colors = "red", jitter = 0.05, point.alpha = .5) + 
+  geom_bar(
+    data = dat,
+    aes(x = music_type, y = calmness_rating),
+    stat = "summary",
+    color = "blue", fill = "lightgrey",
+    alpha = 0.4
+  )
+
+```
+
+**Question:** How do we get the `calmness_rating` prediction for each type of music from the regression equation?
+
+**Response:** _____________________________________
