@@ -244,7 +244,7 @@ corrplot(
 
 ------------------------------------------------------------------------
 
-How many respondents reported `sex` as `males` and `female`?
+How many respondents reported `sex` as `male` and `female` in sample?
 ```{r}
 tabyl(sleep_data$female)
 ```
