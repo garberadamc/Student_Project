@@ -21,25 +21,8 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 ------------------------------------------------------------------------
 
-Install packages
-
-```{r, eval=FALSE}
-# If yellow banner appeared & you clicked 'yes': SKIP A. / Start at B. 
-
-# A.
-
-# c("tidyverse","here","janitor","ggthemes","ggridges","viridis") |>
-#  purrr::walk(~ if (!requireNamespace(.x, quietly = TRUE)) install.packages(.x))
-
-# B. 
-
-# install.packages("remotes")
-# remotes::install_github("MatthewBJane/ThemePark")
-```
-
 
 ```{r}
-# Step 2: Load packages
 
 library(tidyverse)
 library(here)
@@ -58,7 +41,7 @@ library(ThemePark)
 > MAC / *WINDOWS*
 
 - `Run code` (at cursor): COMMAND/*CONTROL* + RETURN/*ENTER*
-- `Pipe operator` (`|>`): COMMAND/*CONTROL* + SHIFT + M
+- `Pipe operator` (`%>%`): COMMAND/*CONTROL* + SHIFT + M
 - `Add code chunk`: COMMAND/*CONTROL* + OPTION/*ALT* + I
 - `Assignment operator` (`<-`): OPTION/*ALT* + MINUS("-") 
 - `Search`: COMMAND/*CONTROL* + F
@@ -71,31 +54,11 @@ library(ThemePark)
 
 ```{r}
 
-class_data <- read_csv(here("data", "psy150_survey_data.csv")) |>  
-  mutate(across(c(fav_number, fav_season, pets, dominant_hand, risk_pref, study_sound), as.factor))
+class_data <- read_csv(here("data", "psy150_summer26.csv")) %>%  
+  mutate(across(c(fav_number, fav_season, pets,
+                  dominant_hand, risk_pref, study_sound),
+                as.factor))
   
-```
-
-------------------------------------------------------------------------
-
-### Create a first plot in R using `ggplot`
-
-Pets ↔ Height: Is `height` related to having `pets`?
-
-------------------------------------------------------------------------
-
-```{r}
-
-class_data |> 
-ggplot(aes(x = height, y = pets, fill = pets)) +
-  geom_density_ridges(alpha=.9) +
-  labs(title = "Is height & having pets related?",
-      caption = "Height (inches)",
-      x="", y="" ) +
-  scale_fill_nemo_d() +
-  theme_nemo() + 
-  theme(legend.position = "none") 
-
 ```
 
 ------------------------------------------------------------------------
@@ -138,7 +101,7 @@ hist(class_data$height)
 #### Make a histogram using `ggplot` for variable `height`
 
 ```{r}
-class_data |>
+class_data %>%
   ggplot(aes(height)) +
     geom_histogram(
       binwidth=1,
@@ -229,8 +192,8 @@ get_modes <- function(x) {
   
   freq_table <- tabyl(x)
   
-  freq_table |>
-    filter(n == max(n)) |>
+  freq_table %>%
+    filter(n == max(n)) %>%
     pull(x)
 }
 
@@ -249,7 +212,7 @@ Survey question: *What is your favorite number between 1 and 10?*
 ------------------------------------------------------------------------
 
 ```{r}
-class_data |>
+class_data %>%
   ggplot(aes(x = fav_number, fill = fav_number)) +
   geom_bar() +
   labs(title = "What is your favorite number between 1 and 10?",
@@ -275,7 +238,7 @@ Survey question: *What is your favorite season?*
 ------------------------------------------------------------------------
 
 ```{r}
-class_data |>
+class_data %>%
   ggplot(aes(x = fav_season, fill = fav_season)) +
   geom_bar() +
   labs(title = "What is your favorite season?",
@@ -301,11 +264,12 @@ Survey question: *What is your preferred wake up time?*
 
 ```{r}
 
-class_data |>
+class_data %>%
   mutate(wake_up_time = 
          factor(wake_up_time,
-         levels = c("6 am", "7 am", "8 am", "9 am", "10 am", "11 am", "12 pm", "1 pm (or later)"),
-         ordered = TRUE)) |>
+         levels = c("6 am", "7 am", "8 am", "9 am", "10 am",
+                    "11 am", "12 pm", "1 pm (or later)"),
+         ordered = TRUE)) %>%
   ggplot(aes(x = wake_up_time, fill = wake_up_time)) +
   geom_bar() +
   labs( title = "Preferred wake up time?",
@@ -327,7 +291,7 @@ Survey question: *Which is your dominant hand?*
 
 ```{r}
 
-class_data |> 
+class_data %>% 
 ggplot(aes(x = dominant_hand, fill = dominant_hand)) +
   geom_bar() +
   labs(
@@ -355,7 +319,7 @@ Survey question: *Do you have any pets?*
 ------------------------------------------------------------------------
 
 ```{r}
-class_data |> 
+class_data %>% 
 ggplot(aes(x = pets, fill = pets)) +
   geom_bar() +
   labs(
@@ -379,8 +343,8 @@ b. *A 50% chance to win $24*
 ------------------------------------------------------------------------
 
 ```{r}
-class_data |> 
-  mutate(risk_pref = fct_rev(risk_pref)) |> 
+class_data %>% 
+  mutate(risk_pref = fct_rev(risk_pref)) %>% 
 ggplot(aes(x = risk_pref, fill = risk_pref)) +
   geom_bar() +
   labs(
@@ -403,7 +367,7 @@ Survey question: *Do you prefer background sound while studying?*
 
 ```{r}
 
-class_data |> 
+class_data %>% 
 ggplot(aes(x = study_sound, fill = study_sound)) +
   geom_bar() +
   labs(

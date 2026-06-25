@@ -1,6 +1,6 @@
 ---
 title: "Step-1 of Project Analyses - Exploration"
-subtitle: "Example [INCOMPLETE TEMPLATE] - Screen Use & Sleep Quality"
+subtitle: "Example - Screen Use & Sleep Quality"
 author: "PSY150"
 date: "`r Sys.Date()`"
 output: 
@@ -12,9 +12,13 @@ output:
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
+::: callout
+NOTE: This script is a starting template from Assignment 2 (**not a complete solution**). Some code may not apply to your project, and additional code needed to complete the assignment may be missing. Use the lab keys included in this project to modify script as needed.
+:::
+
 ------------------------------------------------------------------------
 
-### Data source is simulated or fabricated to reflect finding of following research study:
+### Data source is simulated to reflect approximate findings of following research study:
 
 Jniene et al. (2019). *Perception of sleep disturbances due to bedtime use of blue light‐emitting devices and its impact on habits and sleep quality among young medical students.* 
 
@@ -42,8 +46,7 @@ source("load_plot_functions.R")
 
 Read in data 
 ```{r}
-raw_data <- read_csv(here("data", "blue_light_sleep_sim25.csv")) %>%
-  clean_names()
+raw_data <- read_csv(here("data", "blue_light_sleep_sim25.csv")) 
 ```
 
 Prepare data
@@ -66,12 +69,16 @@ sleep_data <- raw_data %>%
 
 ```
 
+::: callout
+NOTE: Following the Assignment-2 instructions, add written summary/interpretation of descriptive statistics, plots, and tables below the corresponding output and code. As a reminder, gray boxes are for code and code comments only (`#`). Between each code box is for regular text and can be used complete the written portions of the assignment (lines with white background).
+:::
+
 ------------------------------------------------------------------------
 
 ### Take a look at descriptive statistics using `describe()`
 
-- Descriptive stats are useful for describing continuous or ordinal variables
-- Such as: Mean, median, mode, range, skew, kurtosis...
+- Descriptive statistics are useful for describing continuous or ordinal variables
+- Such as: Mean, median, standard deviation, mode, range, skew, kurtosis...
 - `describe()` will return an error if you include non-numeric variables
 - The 'mean' of a binary variable will the portion of 1's for variable
 - Descriptive stats do not work with nominal/categorical variables 
@@ -85,7 +92,8 @@ sleep_data %>%
          fatigue_weekly,
          device_use,
          age, room_lights_off) %>%
-  describe()
+  describe() %>% 
+  select(n, mean, median, sd, min, max, range, skew, kurtosis)
 
 ```
 
@@ -148,20 +156,6 @@ hist_plot(
 )
 ```
 
-Plot distribution of `fatigue_weekly` with a histogram
-```{r}
-hist_plot(
-  data = sleep_data,
-  binwidth=1,
-  x_var = fatigue_weekly,
-  x_label = "Self-Reported Fatigue on Waking (per week)",
-  fill = "blue3", color = "red3",
-  break_min = TRUE, median_line = TRUE, 
-  skew_value = TRUE, kurtosis_value = TRUE,
-  mean_line = TRUE)
-
-```
-
 
 ------------------------------------------------------------------------
 
@@ -217,22 +211,10 @@ corr_vars <- sleep_data %>%
 
 corr_vars %>% 
 tab_corr(
-  triangle = "lower",
-  digits = 2
-)
+  triangle = "lower", digits = 2,
+  p.numeric = TRUE, fade.ns = FALSE)
 ```
 
-Make a correlation plot 
-```{r}
-corr_matrix <- cor(corr_vars, use = "pairwise.complete.obs",
-                   method = "pearson")
-
-corrplot(
-  corr_matrix, 
-  method = "color",   
-  type = "upper", diag = FALSE,       
-  tl.col = "black", tl.srt = 35)
-```
 
 ------------------------------------------------------------------------
 

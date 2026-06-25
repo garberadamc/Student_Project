@@ -1,5 +1,5 @@
 ---
-title: "Week 3: Investigate Distributions, Variable Associations, & Correlations"
+title: "Lab3: Investigate Distributions, Variable Associations, & Correlations"
 subtitle: "PSY 150: Lab Exercise "
 author: "ADD_YOUR_NAME_HERE"
 date: "`r Sys.Date()`"
@@ -9,18 +9,16 @@ output:
 ---
 
 ```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE, eval=FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, eval=TRUE)
 ```
 
 ------------------------------------------------------------------------
 
-### Step 1: Load packages
+### Load packages
 
 ------------------------------------------------------------------------
 
 ```{r}
-
-#### RUN CODE BLOCK (green triangle right hand corner of grey box) >>>>>
 
 library(psych)
 library(tidyverse)
@@ -30,6 +28,7 @@ library(ggrepel)
 library(here)
 library(palmerpenguins)
 library(corrplot)
+library(sjPlot)
 
 ```
 
@@ -51,7 +50,7 @@ source("load_plot_functions.R")
 > MAC / *WINDOWS*
 
 - `Run code` (at cursor): COMMAND/*CONTROL* + RETURN/*ENTER*
-- `Pipe operator` (`|>`): COMMAND/*CONTROL* + SHIFT + M
+- `Pipe operator` (`%>%`): COMMAND/*CONTROL* + SHIFT + M
 - `Add code chunk`: COMMAND/*CONTROL* + OPTION/*ALT* + I
 - `Assignment operator` (`<-`): OPTION/*ALT* + MINUS("-") 
 - `Search`: COMMAND/*CONTROL* + F
@@ -78,7 +77,7 @@ penguin_data <- palmerpenguins::penguins
 ------------------------------------------------------------------------
 
 ```{r}
-penguin_data |> 
+penguin_data %>% 
 ggplot(aes(x = flipper_length_mm, fill = species)) +
   geom_histogram(
     alpha = 0.7, 
@@ -349,7 +348,7 @@ Estimate correlations & significance
 
 # Select variables to plot 
 sample_corr <- corr.test(
-  college_data |> 
+  college_data %>% 
   select(react_time:netfilx_hrs,   
          study_hrs:text_recv,
          hw_hours,beach_hrs,sand_car),
@@ -369,6 +368,7 @@ corrplot(
   insig = "label_sig", pch.cex  = 0.8,
   sig.level = c(.001, .01, .05),
   tl.col = "black", tl.srt = 35)
+
 ```
 
 **Question 9:** Select a pair of variables, describe the strength of their correlation, and state if the p-value indicates significance:
@@ -382,11 +382,10 @@ corrplot(
 ------------------------------------------------------------------------
 
 ```{r}
-library(sjPlot)
 
-college_data |> 
+college_data %>% 
   select(coff_cups, digit_recall,exam_score,
-         study_hrs,sleep_hrs, netfilx_hrs) |> 
+         study_hrs,sleep_hrs, netfilx_hrs) %>% 
 tab_corr(
   triangle = "lower",
   digits = 2
