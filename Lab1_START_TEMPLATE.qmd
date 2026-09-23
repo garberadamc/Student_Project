@@ -38,6 +38,17 @@ source("load_plot_functions.R")
 
 ```
 
+
+### Practice code to read in project data (from a web address)
+
+Reading in data for project will look a little different
+```{r}
+
+
+
+```
+
+
 ------------------------------------------------------------------------
 
 ### Read in data & prepare for analyses
@@ -48,6 +59,7 @@ Read in data
 ```{r}
 raw_data <- *** 
 ```
+
 
 Prepare data
 

@@ -38,6 +38,17 @@ source("load_plot_functions.R")
 
 ```
 
+
+### Practice code to read in project data (from a web address)
+
+Reading in data for project will look a little different
+```{r}
+
+project_data <- read_csv("https://garberadamc.github.io/PSY150_DATA/data/foster_care_sim_Yampolskaya12.csv")
+
+```
+
+
 ------------------------------------------------------------------------
 
 ### Read in data & prepare for analyses
