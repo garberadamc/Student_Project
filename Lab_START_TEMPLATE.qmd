@@ -1,6 +1,6 @@
 ---
-title: "Step-1 of Project Analyses - Exploration"
-subtitle: "Example - Screen Use & Sleep Quality"
+title: "LAB 3: Starter Code Example for Project Analyses (Assignment 2)"
+subtitle: "Data Exploration - Screen Use & Sleep Quality"
 author: "PSY150"
 date: "`r Sys.Date()`"
 output: 
